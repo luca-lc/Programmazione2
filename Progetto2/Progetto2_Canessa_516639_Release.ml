@@ -15,8 +15,8 @@ type binop = Plus
 
 (* definition of expressions *)
 type exp =  Int of int
-        |  Ide of ide
-        |  App of ide * exp
+        |  Ide of string
+        |  App of string * exp
         |  Op of exp * binop * exp
         |  If of exp * exp * exp
         |  Etup of tuple
