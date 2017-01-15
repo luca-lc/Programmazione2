@@ -1,51 +1,57 @@
 (*
-------------------------
-::: TYPE DEFINITIONS :::
-------------------------
-*)
-    (*
-      Boolean values are evaluated like integer:
-      -  1 as true
-      -  0 as false
-    *)
-type binop = Plus
-           | Minus
-           | Mul
-           | Div
-           | Eq
-           | LThan
-           | LEq
-           | GThan
-           | GEq
-;;
-
-type exp =  Int of int
-        |  Ide of string
-        |  App of string * exp
-        |  Op of exp * binop * exp
-        |  If of exp * exp * exp
-;;
-
-type defin = Fun of string * string * exp
-            | IdeName of string * exp
-;;
-
-type prog = Program of (defin list) * exp;;
-
-
-
-(*
 ------------------------------
 ::: ENVIROMENT DEFINITIONS :::
 ------------------------------
 *)
-exception EmptyEnv;;
+exception Unbound of string;;
 
-let fenv0 = fun x -> raise EmptyEnv;;
+type 'a env = (string * 'a) list;;
 
-let env0 = fenv0;;
+let rec appenv (_w, e) = match e with
+	               [] -> raise ( Unbound _w )
+              | (_w1, v1)::r1 -> if _w = _w1 then v1 else appenv(_w, r1)
+;;
 
-let ext env e v = fun y -> if e = y then v else env y;;
+let bind (x, v, r) = (x, v)::r;;
+
+
+
+(*
+------------------------
+::: TYPE DEFINITIONS :::
+------------------------
+*)
+type ide = string;;
+type binop =
+;;
+
+type exp =  Int of int
+         |  Bool of bool
+         |  Ide of ide
+         |  App of exp * exp
+				 |	Plus of exp * exp
+				 |  Minus of exp * exp
+				 |  Mul of exp * exp
+				 |  Div of exp * exp
+				 |  Eq of exp * exp
+				 |  LThan of exp * exp
+				 |  LEq of exp * exp
+				 |  GThan of exp * exp
+				 |  GEq of exp * exp
+				 |  IsZero of exp
+				 |  If of exp * exp * exp
+         |  ETup of tuple
+         |  Pipe of tuple
+         |  ManyTimes of int * exp
+and tuple = Nil
+         | Seq of exp * tuple
+;;
+
+type eva = PInt of int
+	       | PBool of bool
+         | Fun of ide * exp * eva env
+	       | Tup of eva list
+;;
 
 
 
@@ -54,41 +60,122 @@ let ext env e v = fun y -> if e = y then v else env y;;
 ::: EXPRESSION EVALUATION :::
 -----------------------------
 *)
-exception CannotDividBy_0;;
+exception CannotApplyPipe;;
+exception Error;;
 
-let rec eval (e:exp) env fenv = match e with
-                    Int n -> n
-                  | Ide i ->  env i
-                  | App (s, e) -> let (par,body) = (fenv s)
-                                    in (eval body (ext env par (eval e env fenv)) fenv)
-                  | Op (e1, o, e2) -> (
-                                        match o with
-                                          Plus -> (eval e1 env fenv) + (eval e2 env fenv)
-                                        | Minus -> (eval e1 env fenv) - (eval e2 env fenv)
-                                        | Mul -> (eval e1 env fenv) * (eval e2 env fenv)
-                                        | Div -> if ((eval e2 env fenv) != 0) then (eval e1 env fenv) / (eval e2 env fenv) else raise CannotDividBy_0
-                                        | Eq ->  if (eval e1 env fenv) = (eval e2 env fenv) then 1 else 0
-                                        | LThan -> if (eval e1 env fenv) < (eval e2 env fenv) then 1 else 0
-                                        | LEq -> if (eval e1 env fenv) <= (eval e2 env fenv) then 1 else 0
-                                        | GThan -> if (eval e1 env fenv) > (eval e2 env fenv) then 1 else 0
-                                        | GEq -> if (eval e1 env fenv) >= (eval e2 env fenv) then 1 else 0
-                                      )
-                  | If (e1,e2,e3) -> if (eval e1 env fenv) = 1
-                                          then (eval e2 env fenv)
-                                          else (eval e3 env fenv)
+let rec check (t, v) =  match t with
+                    "exp" -> ( match (v:exp) with
+                                Int n -> true
+                              | Ide i -> true
+                              | App (z,q) -> check("exp", z) && check("exp", q)
+                              | If(e1,e2,e3) -> check("exp", e1) && check("exp", e2) && check("exp", e3)
+                              | _ -> false
+                             )
+                  | _ -> false
 ;;
 
+let plus ((x), (y)) = match (x,y) with
+							( PInt(u), PInt(v) ) -> PInt(u+v)
+							|_ -> failwith ("Error")
+;;
 
+let minus (x, y) = match (x,y) with
+							( PInt(u), PInt(v) ) -> PInt(u-v)
+							|_ -> failwith ("Error")
+;;
 
-(*
-------------------------------
-::: DECLARETION EVALUATION :::
-------------------------------
-*)
-let rec dval (decls: defin list) = match decls with
-            [ ] -> fenv0
-         |  Fun (fname, par, body)::rest -> ext (dval rest) fname (par, body)
-         |  IdeName (i, v)::rest -> ext (dval rest) i (i,v)
+let mul (x, y) = match (x,y) with
+							( PInt(u), PInt(v) ) -> PInt(u*v)
+							|_ -> failwith ("Error")
+;;
+
+let div (x, y) = match (x,y) with
+							( PInt(u), PInt(v) ) -> PInt(u/v)
+							|_ -> failwith ("Error")
+;;
+
+let eq (x, y) = match (x,y) with
+								(PInt(u),PInt(v)) -> PBool( u = v )
+							| _ -> failwith "Error"
+;;
+
+let lthan (x, y) = match (x,y) with
+								(PInt(u),PInt(v)) -> PBool( u < v )
+							| _ -> failwith "Error"
+;;
+
+let leq (x, y) = match (x,y) with
+								(PInt(u),PInt(v)) -> PBool( u <= v )
+							| _ -> failwith "Error"
+;;
+
+let gthan (x, y) = match (x,y) with
+								(PInt(u),PInt(v)) -> PBool( u > v )
+							| _ -> failwith "Error"
+;;
+
+let geq (x, y) = match (x,y) with
+								(PInt(u),PInt(v)) -> PBool( u >= v )
+							| _ -> failwith "Error"
+;;
+
+let is_zero x = match (x) with
+								PInt(u) -> PBool( u = 0 )
+							| _ -> failwith "Error"
+;;
+
+let rec gen_tup l = match l with
+											[] -> []
+										| t::tl -> ( match t with
+															     Fun(x, y, z) -> gen_tup tl@[t]
+																 | Tup( x ) -> (gen_tup tl)@(gen_tup x)
+																 | _ -> raise Error
+																)
+;;
+
+let rec eval ((e:exp),(en:eva env)) = match e with
+                    Int n -> if check( "int", Int n ) then PInt n else failwith "wrong type"
+									| Bool x -> PBool x
+									| Ide i ->  if check( "exp", Ide i ) then appenv(i, en) else failwith "wrong type"
+                  | App (s, ex) -> if check("exp", s) && check("exp", ex)
+                                    then ( match eval(s,en) with
+																								Fun(k, j, en1) -> eval(j, bind(k, eval(ex, en), en1))
+																							| Tup t -> let rec sem(ls, v) = ( match ls with
+																																									Fun(x, b, en1)::[] -> eval(b, bind(x, eval(v, en), en1))
+																																								|	Fun(x, b, en1)::tl -> eval(b, bind(x, sem(tl, v), en1))
+																																								| _ -> raise Error
+																																							)
+																																				in sem( gen_tup(t), ex)
+																							| _ -> raise Error
+																					)
+                                    else failwith "wrong type"
+                  	|	Plus (e1, e2) ->  plus(eval(e1,en),eval(e2,en))
+                    | Minus (e1, e2)-> minus(eval(e1,en),eval(e2,en))
+                    | Mul (e1, e2)-> mul(eval(e1,en),eval(e2,en))
+                    | Div (e1, e2)-> div(eval(e1,en),eval(e2, en))
+                    | Eq (e1, e2)->  eq((eval(e1,en)),(eval(e2,en)))
+                    | LThan (e1, e2)-> lthan((eval(e1,en)),(eval(e2,en)))
+                    | LEq (e1, e2)-> leq((eval(e1,en)),(eval(e2,en)))
+                    | GThan (e1, e2)-> gthan((eval(e1,en)),(eval(e2,en)))
+                    | GEq (e1, e2)-> geq((eval(e1,en)),(eval(e2,en)))
+                    | IsZero e1 -> is_zero(x)
+                  	| If (e1,e2,e3) -> if (eval (e1,en)) = PBool(true)
+                                              then (eval(e2,en))
+                                                else (eval(e3, en))
+        						| ETup t  -> let rec listtup t = match t with
+                			                       Nil -> []
+          			                           | Seq(e1, tl) -> (eval (e1,en))::listtup(tl)
+                                       in Tup(listtup t )
+                    | Pipe t  -> let rec listtup t = match t with
+                			                       Nil -> []
+                			                     | Seq(Ide f, tl) -> (eval (Ide f, en))::listtup(tl)
+            			                         | Seq(ManyTimes(n, f), tl) -> (eval (ManyTimes(n, f),en))::listtup(tl)
+            			                         | Seq(_,_) -> raise CannotApplyPipe
+        			                         in Tup (listtup t )
+                    | ManyTimes(n, f) -> let rec manytimes(n, fz) = match n with
+                				                      0 -> []
+          				                          | _ -> (eval(fz, en))::manytimes(n-1, fz)
+        				                        in Tup(manytimes(n, f))
 ;;
 
 
@@ -98,5 +185,4 @@ let rec dval (decls: defin list) = match decls with
 ::: PROGRAM EVALUATION :::
 --------------------------
 *)
-let peval (p: prog) = match p with
-            Program (decls, expr) -> let fenv = dval(decls) in eval expr env0 fenv;;
+let prog = fun p -> eval p ;;

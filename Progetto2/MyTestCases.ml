@@ -4,10 +4,10 @@
 # peval(Program([IdeName("i", Int 5)], App("i", Int 2000)));;
 - : int = 5
 
-# peval(Program([Fun("Sum", "n", Op(Ide "n", Plus, Int 5))], Op(Int 4, Plus, Int 3)));;
+# peval(Program([Fun("Sum", "n", Op(ETup( Seq(Int 5, Nil)), Plus, ETup( Seq(Int 5, Nil))))], Op(Int 2, Plus, Int 4)));;
 - : int = 7
 
-# peval(Program([Fun("Sum", "n", Op(Ide "n", Plus, Int 5))], App("Sum", Int 2)));;
+# peval(Program([Fun("Sum", "n", Op(Ide "n", Plus, Int 5))], App(ETup(Seq(Int 2, Nil)), Int 2)));;
 - : int = 7
 
 # peval(Program([Fun("Sum", "n", Op(Ide "n", Plus, Int 5))], App("Sum",(Op(Int 4, Plus, Int 3)))));;
