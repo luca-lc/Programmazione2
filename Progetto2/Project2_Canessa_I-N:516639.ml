@@ -63,6 +63,7 @@ type eva = PInt of int
 ::: EXPRESSION EVALUATION :::
 -----------------------------
 *)
+exception CannotDivideBy_0
 exception CannotApplyPipe;;
 exception Error;;
 
@@ -150,12 +151,12 @@ let rec eval ((e:exp),(en:eva env)) = match e with
 																				in sem( gen_tup(t), ex)
 														  | _ -> raise Error
 																					)
-									| Op (e1, op, e2) -> if (check("exp", e1) && check("exp", e2)) 
+									| Op (e1, op, e2) -> if (check("exp", e1) && check("exp", e2))
 															then ( match op with
 																	  Plus  ->  plus(eval(e1,en),eval(e2,en))
 												                    | Minus -> minus(eval(e1,en),eval(e2,en))
 												                    | Mul -> mul(eval(e1,en),eval(e2,en))
-												                    | Div -> div(eval(e1,en),eval(e2, en))
+												                    | Div -> if (is_zero(eval(e2, en))) = PBool(true) then div(eval(e1,en),eval(e2, en)) else raise CannotDivideBy_0
 												                    | Eq ->  eq(eval(e1,en),eval(e2,en))
 												                    | LThan -> lthan(eval(e1,en),eval(e2,en))
 												                    | LEq -> leq(eval(e1,en),eval(e2,en))
