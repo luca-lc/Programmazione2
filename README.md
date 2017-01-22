@@ -2,9 +2,8 @@
 
 <br />
 <br />
-<br />
 
-#####The projects are divided in:
+####The projects are divided in:
 
 * Java: where are all exercise files in .java and their bitcodes in .class
 
